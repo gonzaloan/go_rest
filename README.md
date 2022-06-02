@@ -1,1 +1,5 @@
-# go_rest
+# GO Restful API
+
+Just a Rest API in Go :)
+
+
