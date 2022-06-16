@@ -5,6 +5,7 @@ import (
 	"errors"
 	"goapi/database"
 	"goapi/repository"
+	"goapi/websocket"
 	"log"
 	"net/http"
 
@@ -21,17 +22,23 @@ type Config struct {
 // Server : We need a Config component to create a Server.
 type Server interface {
 	Config() *Config
+	Hub() *websocket.Hub
 }
 
 // Broker : Component that will handle other components
 type Broker struct {
 	config *Config
 	router *mux.Router
+	hub    *websocket.Hub
 }
 
 // Config : Make Broker satisfy Config, with a Receiver Function
 func (b *Broker) Config() *Config {
 	return b.config
+}
+
+func (b *Broker) Hub() *websocket.Hub {
+	return b.hub
 }
 
 func NewServer(ctx context.Context, config *Config) (*Broker, error) {
@@ -48,6 +55,7 @@ func NewServer(ctx context.Context, config *Config) (*Broker, error) {
 	return &Broker{
 		config: config,
 		router: mux.NewRouter(),
+		hub:    websocket.NewHub(),
 	}, nil
 }
 
@@ -59,6 +67,7 @@ func (b *Broker) Start(binder func(s Server, r *mux.Router)) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	go b.hub.Run()
 	repository.SetRepository(repo)
 	log.Println("Starting server on port", b.config.Port)
 	if err := http.ListenAndServe(b.config.Port, b.router); err != nil {
